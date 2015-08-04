@@ -205,6 +205,39 @@ func (client *Client) Repository(project *Project) (repo *octokit.Repository, er
 	return
 }
 
+func (client *Client) Repositories(owner string) (repos []octokit.Repository, err error) {
+	url, err := octokit.UserURL.Expand(octokit.M{"user": owner})
+	if err != nil {
+		return
+	}
+
+	api, err := client.api()
+	if err != nil {
+		err = FormatError("listing repositories", err)
+		return
+	}
+
+	user, result := api.Users(client.requestURL(url)).One()
+	if result.HasError() {
+		result.Err = FormatError("listing repositories", result.Err)
+		return
+	}
+
+	reposUrl, err := user.ReposURL.Expand(octokit.M{})
+	if err != nil {
+		err = FormatError("listing repositories", err)
+		return
+	}
+
+	repos, result = api.Repositories(reposUrl).All()
+	if result.HasError() {
+		err = FormatError("listing repositories", result.Err)
+		return
+	}
+
+	return
+}
+
 func (client *Client) IsRepositoryExist(project *Project) bool {
 	repo, err := client.Repository(project)
 
