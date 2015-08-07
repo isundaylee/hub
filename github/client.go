@@ -223,16 +223,25 @@ func (client *Client) Repositories(owner string) (repos []octokit.Repository, er
 		return
 	}
 
-	reposUrl, err := user.ReposURL.Expand(octokit.M{})
-	if err != nil {
-		err = FormatError("listing repositories", err)
-		return
-	}
+	reposUrl, _ := user.ReposURL.Expand(nil)
 
-	repos, result = api.Repositories(reposUrl).All()
-	if result.HasError() {
-		err = FormatError("listing repositories", result.Err)
-		return
+	var currentPageRepos []octokit.Repository
+	currentPageUrl := reposUrl
+
+	for {
+		currentPageRepos, result = api.Repositories(currentPageUrl).All()
+		if result.HasError() {
+			err = FormatError("listing repositories", result.Err)
+			return
+		}
+
+		repos = append(repos, currentPageRepos...)
+
+		if result.NextPage == nil {
+			break
+		}
+
+		currentPageUrl, _ = result.NextPage.Expand(nil)
 	}
 
 	return
